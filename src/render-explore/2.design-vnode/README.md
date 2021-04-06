@@ -2,7 +2,7 @@
 一个组件的产出是`VNode`，渲染器(`Renderer`)的渲染目标也是`VNode`。可见`VNode`在框架设计的整个环节中都非常重要，甚至**设计 VNode 本身就是在设计框架**，`VNode`的设计还会对后续算法的性能产生影响。本章我们就着手对`VNode`进行一定的设计，尝试用`VNode`描述各类渲染内容。
 
 ## 用 VNode 描述真实 DOM
-### 描述dom
+## 描述dom
 我们使用 tag 属性来存储标签的名字，用 data 属性来存储该标签的附加信息，比如 style、class、事件等，通常我们把一个 VNode 对象的 data 属性称为 VNodeData。
 ```js
 const elementVNode = {
@@ -16,7 +16,7 @@ const elementVNode = {
   }
 }
 ```
-### 描述有子字节点的dom
+## 描述有子字节点的dom
 我们使用 tag 属性来存储标签的名字，用 data 属性来存储该标签的附加信息，比如 style、class、事件等，通常我们把一个 VNode 对象的 data 属性称为 VNodeData。
 ```js
 const elementVNode = {
@@ -55,7 +55,7 @@ const textVNode = {
 ```
 上面也可以加一个text来专门放文本，这取决于你如何设计，但是**尽可能的在保证语义能够说得通的情况下复用属性，会使 VNode 对象更加轻量**，所以我们采取使用 children 属性来存储文本内容的方案。
 
-### 用 VNode 描述抽象内容
+## 用 VNode 描述抽象内容
 什么是抽象内容呢？组件就属于抽象内容，比如你在 模板 或 jsx 中使用了一个组件，如下：
 ```html
 <div>
@@ -149,7 +149,7 @@ const portalVNode = {
 ```
 Portal 类型的 VNode 与 Fragment 类型的 VNode 类似，都需要一个唯一的标识，来区分其类型，目的是告诉渲染器如何渲染该 VNode。
 
-### VNode 的种类
+## VNode 的种类
 当 VNode 描述不同的事物时，其属性的值也各不相同。比如一个 VNode 对象是 html 标签的描述，那么其 tag 属性值就是一个字符串，即标签的名字；如果是组件的描述，那么其 tag 属性值则引用组件类(或函数)本身；如果是文本节点的描述，那么其 tag 属性值为 null。
 
 最终我们发现，不同类型的 VNode 拥有不同的设计，这些差异积少成多，所以我们完全可以将它们分门别类。
@@ -169,7 +169,7 @@ Portal 类型的 VNode 与 Fragment 类型的 VNode 类似，都需要一个唯�
   - Portal  
   > 无论是普通的有状态组件还是 keepAlive 相关的有状态组件，它们都是有状态组件。所以我们在设计 VNode 时可以将它们作为一类看待。
 
-  ### 使用 flags 作为 VNode 的标识
+  ## 使用 flags 作为 VNode 的标识
   既然 VNode 有类别之分，我们就有必要使用一个唯一的标识，来标明某一个 VNode 属于哪一类。同时给 VNode 添加 flags 也是 Virtual DOM 算法的优化手段之一。  
 
   比如在 Vue2 中区分 VNode 是 html 元素还是组件亦或是普通文本，是这样做的：
@@ -196,7 +196,7 @@ if (flags & VNodeFlags.ELEMENT) {
 如上，采用了位运算，在一次挂载任务中如上判断很可能大量的进行，使用位运算在一定程度上再次拉升了运行时性能。  
 **这就意味着我们在设计 VNode 对象时，应该包含 flags 字段**
 
-### 枚举值 VNodeFlags
+## 枚举值 VNodeFlags
 那么一个 VNode 对象的 flags 可以是哪些值呢？那就看 VNode 有哪些种类就好了，每一个 VNode 种类我们都为其分配一个 flags 值即可，我们把它设计成一个枚举值并取名为 VNodeFlags，在 javascript 里就用一个对象来表示即可：
 ```js
 
@@ -289,17 +289,17 @@ htmlVnode.flags & VNodeFlags.COMPONENT // 假
 ```
 熟悉位运算的话，理解起来很简单。这实际上是多种位运算技巧中的一个小技巧。我们可以列一个表格：
 
-|**VNodeFlags**|**左移运算**|**32位的bit序列(出于简略，只用 9 位表示)**|
-|----|----|---|
-|ELEMENT_HTML|无|00000000`1`|
-|ELEMENT_SVG|`1 << 1`|0000000`1`0|
-|COMPONENT_STATEFUL_NORMAL|`1 << 2`|000000`1`00|
-|COMPONENT_STATEFUL_SHOULD_KEEP_ALIVE|`1 << 3`|00000`1`000|
-|COMPONENT_STATEFUL_KEPT_ALIVE|`1 << 4`|0000`1`0000|
-|COMPONENT_FUNCTIONAL|`1 << 5`|000`1`00000|
-|TEXT|`1 << 6`|00`1`000000|
-|FRAGMENT|`1 << 7`|0`1`0000000|
-|PORTAL|`1 << 8`|`1`00000000|
+|**VNodeFlags**|**左移运算**|**32位的bit序列(出于简略，只用 9 位表示)**|**十进制值**|
+|----|----|---|--|
+|ELEMENT_HTML|无|00000000`1`|1|
+|ELEMENT_SVG|`1 << 1`|0000000`1`0|2|
+|COMPONENT_STATEFUL_NORMAL|`1 << 2`|000000`1`00|4|
+|COMPONENT_STATEFUL_SHOULD_KEEP_ALIVE|`1 << 3`|00000`1`000|8|
+|COMPONENT_STATEFUL_KEPT_ALIVE|`1 << 4`|0000`1`0000|16|
+|COMPONENT_FUNCTIONAL|`1 << 5`|000`1`00000|32|
+|TEXT|`1 << 6`|00`1`000000|64|
+|FRAGMENT|`1 << 7`|0`1`0000000|128|
+|PORTAL|`1 << 8`|`1`00000000|256|
 
 根据上表展示的基本 flags 值可以很容易地得出下表：
 
@@ -310,3 +310,151 @@ htmlVnode.flags & VNodeFlags.COMPONENT // 假
 |COMPONENT|`(1 << 2) \| (1 << 3) \| (1 << 4) \| (1 << 5)`|000`1111`00|
 
 所以很自然的，只有 VNodeFlags.ELEMENT_HTML 和 VNodeFlags.ELEMENT_SVG 与 VNodeFlags.ELEMENT 进行按位与(&)运算才会得到非零值，即为真。
+
+## children 和 ChildrenFlags
+
+DOM 是一棵树早已家至人说，既然 VNode 是真实渲染内容的描述，那么它必然也是一棵树。在之前的设计中，我们给 VNode 定义了 children 属性，用来存储子 VNode。大家思考一下，一个标签的子节点会有几种情况？  
+
+总的来说无非有以下几种：
+- 没有子节点
+- 只有一个子节点
+- 多个子节点
+  - 有 key
+  - 无 key
+- 不知道子节点的情况
+
+我们可以用一个叫做 ChildrenFlags 的对象来枚举出以上这些情况，作为一个 VNode 的子节点的类型标识：
+```js
+const ChildrenFlags = {
+  // 未知的 children 类型
+  UNKNOWN_CHILDREN: 0,
+  // 没有 children
+  NO_CHILDREN: 1,
+  // children 是单个 VNode
+  SINGLE_VNODE: 1 << 1,
+
+  // children 是多个拥有 key 的 VNode
+  KEYED_VNODES: 1 << 2,
+  // children 是多个没有 key 的 VNode
+  NONE_KEYED_VNODES: 1 << 3
+}
+```
+由于 `ChildrenFlags.KEYED_VNODES` 和 `ChildrenFlags.NONE_KEYED_VNODES` 都属于多个 VNode，所以我们可以派生出一个“多节点”标识，以方便程序的判断：
+```js
+ChildrenFlags.MULTIPLE_VNODES = ChildrenFlags.KEYED_VNODES | ChildrenFlags.NONE_KEYED_VNODES
+```
+这样我们判断一个 VNode 的子节点是否是多个子节点就变得容易多了：
+```js
+someVNode.childFlags & ChildrenFlags.MULTIPLE_VNODES
+```
+> TIP:  
+> 为什么 children 也需要标识呢？原因只有一个：为了优化。在后面讲解 diff 算法的章节中你将会意识到，这些信息是至关重要的。
+
+在一个 `VNode` 对象中，我们使用 `flags` 属性来存储该 `VNode` 的类型，类似的，我们将使用 `childFlags` 来存储子节点的类型，我们来举一些实际的例子：
+
+```js
+// 没有子节点的 div 标签
+const elementVNode = {
+  flags: VNodeFlags.ELEMENT_HTML,
+  tag: 'div',
+  data: null,
+  children: null,
+  childFlags: ChildrenFlags.NO_CHILDREN
+}
+
+// 文本节点的 childFlags 始终都是 NO_CHILDREN
+const textVNode = {
+  tag: null,
+  data: null,
+  children: '我是文本',
+  childFlags: ChildrenFlags.NO_CHILDREN
+}
+
+// 拥有多个使用了key的 li 标签作为子节点的 ul 标签
+const elementVNode = {
+  flags: VNodeFlags.ELEMENT_HTML,
+  tag: 'ul',
+  data: null,
+  childFlags: ChildrenFlags.KEYED_VNODES,
+  children: [
+    {
+      tag: 'li',
+      data: null,
+      key: 0
+    },
+    {
+      tag: 'li',
+      data: null,
+      key: 1
+    }
+  ]
+}
+
+// 只有一个子节点的 Fragment
+const elementVNode = {
+  flags: VNodeFlags.FRAGMENT,
+  tag: null,
+  data: null,
+  childFlags: ChildrenFlags.SINGLE_VNODE,
+  children: {
+    tag: 'p',
+    data: null
+  }
+}
+```
+
+## VNodeData
+VNodeData 顾名思义，它就是 VNode 数据，用于对 VNode 进行描述。举个例子，假如一个 VNode 的类型是 html 标签，则 VNodeData 中可以包含 class、style 以及一些事件，这样渲染器在渲染此 VNode 时，才知道这个标签的背景颜色、字体大小以及监听了哪些事件等等。所以从设计角度来讲，任何可以对 VNode 进行描述的内容，我们都可以将其存放到 VNodeData 对象中，如：
+```js
+{
+  flags: VNodeFlags.ELEMENT_HTML,
+  tag: 'div',
+  data: {
+    class: ['class-a', 'active'],
+    style: {
+      background: 'red',
+      color: 'green'
+    },
+    // 其他数据...
+  }
+}
+```
+如果 VNode 的类型是组件，那么我们同样可以用 VNodeData 来描述组件，比如组件的事件、组件的 props 等等，假设有如下模板：
+```js
+// template
+<MyComponent @some-event="handler" prop-a="1" />
+
+// 则其对应的 VNodeData 应为：
+{
+  flags: VNodeFlags.COMPONENT_STATEFUL,
+  tag: 'div',
+  data: {
+    on: {
+      'some-event': handler
+    },
+    propA: '1'
+    // 其他数据...
+  }
+}
+```
+当然了，只要能够正确地对 VNode 进行描述，具体的数据结构你可以随意设计。我们暂且不限制 VNodeData 的固定格式。在后续章节中，我们会根据需求逐渐地完善 VNodeData 的设计。  
+
+至此，我们已经对 VNode 完成了一定的设计，目前为止我们所设计的 VNode 对象如下：
+```ts
+export interface VNode {
+  // _isVNode 属性在上文中没有提到，它是一个始终为 true 的值，有了它，我们就可以判断一个对象是否是 VNode 对象
+  _isVNode: true
+  // el 属性在上文中也没有提到，当一个 VNode 被渲染为真实 DOM 之后，el 属性的值会引用该真实DOM
+  el: Element | null
+  flags: VNodeFlags
+  tag: string | FunctionalComponent | ComponentClass | null
+  data: VNodeData | null
+  children: VNodeChildren
+  childFlags: ChildrenFlags
+}
+```
+其中 _isVNode 属性和 el 属性在上文中没有提到，_isVNode 属性是一个始终为 true 的值，有了它，我们就可以判断一个对象是否是 VNode 对象。el 属性的值在 VNode 被渲染为真实 DOM 之前一直都是 null，当 VNode 被渲染为真实 DOM 之后，el 属性的值会引用该真实 DOM。
+
+实际上，如果你看过 Vue3 的源码，你会发现在源码中一个 VNode 对象除了包含本节我们所讲到的这些属性之外，还包含诸如 handle 和 contextVNode、parentVNode、key、ref、slots 等其他额外的属性。  
+
+我们之所以没有在本章中包含这些内容，是因为目前来讲，我们根本不需要这些属性，比如 handle 属性仅用于函数式组件，所以我们会在函数式组件原理相关的章节再讲。
