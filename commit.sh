@@ -10,6 +10,7 @@ else
     msg='update'
 fi
 
+git init
 git add -A
 git commit -m $msg
 
