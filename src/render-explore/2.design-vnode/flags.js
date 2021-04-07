@@ -56,7 +56,7 @@ export const ChildrenFlags = {
 ChildrenFlags.MULTIPLE_VNODES = ChildrenFlags.KEYED_VNODES | ChildrenFlags.NONE_KEYED_VNODES
 
 /**
- * @description: vnode 对象 
+ * @description: vnode 对象
  */
 /* export interface VNode {
   // _isVNode 属性在上文中没有提到，它是一个始终为 true 的值，有了它，我们就可以判断一个对象是否是 VNode 对象
@@ -72,7 +72,7 @@ ChildrenFlags.MULTIPLE_VNODES = ChildrenFlags.KEYED_VNODES | ChildrenFlags.NONE_
 
 
 /**
- * @description: 后续判断可以这样写 
+ * @description: 后续判断可以这样写
  */
 
 /* const flags = vnode.flags

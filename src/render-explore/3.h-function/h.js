@@ -103,9 +103,9 @@ function createTextVNode(text) {
   }
 }
 
-const fragmentVNode = h(Fragment, null, [
-  h('td'), h('td')
-])
-
-const app =document.querySelector('#app')
-app.innerText = JSON.stringify(fragmentVNode)
+// const fragmentVNode = h(Fragment, null, [
+//   h('td'), h('td')
+// ])
+// console.log(fragmentVNode);
+// const app =document.querySelector('#app')
+// app.innerText = JSON.stringify(fragmentVNode)
