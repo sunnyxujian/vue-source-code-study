@@ -3,7 +3,7 @@
 
 ## 用 VNode 描述真实 DOM
 ## 描述dom
-我们使用 tag 属性来存储标签的名字，用 data 属性来存储该标签的附加信息，比如 style、class、事件等，通常我们把一个 VNode 对象的 data 属性称为 VNodeData。
+我们使用 tag 属性来存储标签的名<small></small>字，用 data 属性来存储该标签的附加信息，比如 style、class、事件等，通常我们把一个 VNode 对象的 data 属性称为 VNo~~~~deData。
 ```js
 const elementVNode = {
   tag: 'div',
