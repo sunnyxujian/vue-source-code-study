@@ -12,6 +12,10 @@
 2. [如何设计VNode](./src/render-explore/2.design-vnode/README.md)
 3. [辅助创建 VNode 的 h 函数](./src/render-explore/3.h-function/README.md)
 4. [渲染器之挂载](./src/render-explore/4.mount/README.md)
+5. 渲染器之patch
+6. 渲染器的核心 Diff 算法
+7. 自定义渲染器和异步渲染
+
 
 
 ### 二、Vue2源码
