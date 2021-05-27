@@ -1,6 +1,8 @@
 import { initState } from "./state"
 import { isFunction } from "./utils"
 
+
+
 /*
  * @Description: vue初始化方法
  * @Author: xujian
