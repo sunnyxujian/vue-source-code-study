@@ -6,7 +6,7 @@
 
 const arrayProtoMethods = Array.prototype;
 
-const arrayMethods = Object.create(Array.prototype)
+export const arrayMethods = Object.create(Array.prototype)
 
 
 const arrayChangedMethods = [
@@ -22,8 +22,9 @@ const arrayChangedMethods = [
 
 arrayChangedMethods.forEach(method => {
   arrayMethods[method] = function (...args) {
-    result = arrayProtoMethods[method].apply(this, args)
+   const result = arrayProtoMethods[method].apply(this, args)
     const ob = this.__ob__
+    console.log(ob);
     // 数组是否有新增的元素
     let inserted = null
     switch (method) {
@@ -37,9 +38,9 @@ arrayChangedMethods.forEach(method => {
       default:
         break;
     }
-
+    console.log(inserted);
     if (inserted) {
-      ob.observerArray(inserted) // 对新增的每一项进行响应式处理
+      ob.observeArray(inserted) // 对新增的每一项进行响应式处理
     }
 
     return result

@@ -26,8 +26,6 @@ initMixin(Vue)
 // lifecycleMixin(Vue)
 // renderMixin(Vue)
 
-Vue.prototype.$mount = function (el, hydrating) {
 
-}
 
 export default Vue

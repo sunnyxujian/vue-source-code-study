@@ -27,9 +27,9 @@ function initMixin(Vue) {
 
     initState(vm)
 
-    // if (vm.$options.el) {
-    //   vm.$mount(vm.$options.el)
-    // }
+    Vue.prototype.$mount = function (el, hydrating) {
+
+    }
     
   }
 
