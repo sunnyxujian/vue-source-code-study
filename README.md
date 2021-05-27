@@ -15,7 +15,7 @@
 
 
 ### 二、Vue2源码
-1. [vue2源码梳理](./my-vue2/readme.md)
+1. [宏观代码梳理](./my-vue2/readme.md)
 2. Vue响应式原理
 3. 模板编译
 4. 渲染watcher
@@ -25,5 +25,5 @@
 8. Watch & Computed
 9. Vue组件原理
 10. Diff算法
-11. 
+11. ...
 
