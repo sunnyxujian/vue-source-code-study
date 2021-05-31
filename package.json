@@ -5,10 +5,13 @@
   "repository": "https://github.com/Itherma/vue-source-code-study.git",
   "author": "microjan <1227971544@qq.com>",
   "license": "MIT",
+  "scripts": {
+    "my-vue": "parcel my-vue2/index.html"
+  },
   "devDependencies": {
     "@babel/core": "^7.13.14",
     "@babel/preset-env": "^7.13.12",
-    "parcel": "^2.0.0-beta.2"
+    "parcel": "^2.0.0-beta.3.1"
   },
   "dependencies": {
     "snabbdom": "^3.0.1"

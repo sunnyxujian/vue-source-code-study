@@ -24,14 +24,13 @@ function observer(data) {
   }
 }
 
-function defineReactive(data, key, value) {
-  console.log(data, key, value);
-  initObserver(value)
-  Object.defineProperty(data, key, {
+function defineReactive(data, key, item) {
+  initObserver(item)
+  Object.defineProperties(data, key, {
     enumerable: true,
     configurable: true,
     get: function () {
-      return value
+      return val
     },
     set: function (newVal) {
       if (val === newVal) return
@@ -50,5 +49,3 @@ function initObserver(data) {
 
 
 initObserver(data)
-
-console.log(data);
