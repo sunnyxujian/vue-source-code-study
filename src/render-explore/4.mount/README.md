@@ -573,3 +573,266 @@ render(elementVnode, document.getElementById('app'))
 其效果如下，当点击红色方块时会触发点击事件执行回调函数：  
 
 ![mount-event](./../../../assets/event-mount.png)
+
+
+## 挂载纯文本、Fragment 和 Portal
+### 挂载文本节点
+
+如果一个 VNode 的类型是 VNodeFlags.TEXT，那么 mount 函数会调用 mountText 函数挂载该纯文本元素：
+```js {9-11}
+function mount(vnode, container, isSVG) {
+  const { flags } = vnode
+  if (flags & VNodeFlags.ELEMENT) {
+    // 挂载普通标签
+    mountElement(vnode, container, isSVG)
+  } else if (flags & VNodeFlags.COMPONENT) {
+    // 挂载组件
+    mountComponent(vnode, container, isSVG)
+  } else if (flags & VNodeFlags.TEXT) {
+    // 挂载纯文本
+    mountText(vnode, container)
+  } else if (flags & VNodeFlags.FRAGMENT) {
+    // 挂载 Fragment
+    mountFragment(vnode, container, isSVG)
+  } else if (flags & VNodeFlags.PORTAL) {
+    // 挂载 Portal
+    mountPortal(vnode, container)
+  }
+}
+```
+
+`mountText` 函数实现起来很简单，由于纯文本类型的 `VNode` 其 `children` 属性存储着与之相符的文本字符串，所以只需要调用 `document.createTextNode` 函数创建一个文本节点即可，然后将其添加到 `container` 中，如下：
+
+```js
+function mountText(vnode, container) {
+  const el = document.createTextNode(vnode.children)
+  vnode.el = el
+  container.appendChild(el)
+}
+```
+
+我们修改一下之前的 `elementVNode`，为其添加一个文本子节点：
+```js 10
+const elementVNode = h(
+  'div',
+  {
+    style: {
+      height: '100px',
+      width: '100px',
+      background: 'red'
+    }
+  },
+  '我是文本'
+)
+```
+使用渲染器渲染如上 elementVnode 的结果如下图所示：
+
+![挂载文本](../../../assets/mount-text.png)
+
+### 挂载 Fragment
+
+其实挂载 `Fragment` 和单纯地挂载一个 `VNode` 的 `children` 是没什么区别的，在没有 `Fragment` 时我们要想挂载一个片段，这个片段必须使用包裹元素包裹，如下：
+```html
+<!-- div 就是包裹元素 -->
+<div>
+  <h1></h1>
+  <p></p>
+</div>
+```
+
+有了 `Fragment` 则不需要包裹元素：
+
+```html
+<Fragment>
+  <h1></h1>
+  <p></p>
+</Fragment>
+```
+
+这两段代码的区别是：`<Fragment>` 标签不会被渲染为真实DOM，也就不会产生多余的DOM元素，再来观察一下这两个模板片段对应的 `VNode`：
+
+没有 `Fragment`的 `VNode`：
+
+```js {2,3}
+const elementVNode = {
+  flags: VNodeFlags.ELEMENT_HTML,
+  tag: "div",
+  data: null,
+  childFlags: ChildrenFlags.MULTIPLE_VNODES,
+  children: [
+    {
+      flags: VNodeFlags.ELEMENT_HTML,
+      tag: 'h1',
+      data: null,
+      childFlags: ChildrenFlags.NO_CHILDREN,
+      children: null,
+      el: null
+    },
+    {
+      flags: VNodeFlags.ELEMENT_HTML,
+      tag: 'p',
+      data: null
+      childFlags: ChildrenFlags.NO_CHILDREN,
+      children: null,
+      el: null
+    }
+  ],
+  el: null
+}
+```
+有 `Fragment的` 的 `VNode`：
+
+```js {2,3}
+const elementVNode = {
+  flags: VNodeFlags.FRAGMENT,
+  tag: null,
+  data: null,
+  childFlags: ChildrenFlags.MULTIPLE_VNODES,
+  children: [
+    {
+      flags: VNodeFlags.ELEMENT_HTML,
+      tag: 'h1',
+      data: null,
+      childFlags: ChildrenFlags.NO_CHILDREN,
+      children: null,
+      el: null
+    },
+    {
+      flags: VNodeFlags.ELEMENT_HTML,
+      tag: 'p',
+      data: null
+      childFlags: ChildrenFlags.NO_CHILDREN,
+      children: null,
+      el: null
+    }
+  ],
+  el: null
+}
+```
+
+通过对比可以很容易地发现，使用包裹元素的模板与 `Fragment` 唯一的区别就是 `elementVNode.flags` 和 `elementVNode.tag` 的不同。在 `mount` 函数内部，如果一个 `VNode` 的类型是 `Fragment` (即 `VNodeFlags.FRAGMENT`)，则会使用 `mountFragment` 函数进行挂载，实际上对于 `Fragment` 类型的 `VNode` 的挂载，就等价于只挂载一个 `VNode` 的 `children`，仅此而已，实现如下：
+
+```js
+function mountFragment(vnode, container, isSVG) {
+  // 拿到 children 和 childFlags
+  const { children, childFlags } = vnode
+  switch (childFlags) {
+    case ChildrenFlags.SINGLE_VNODE:
+      // 如果是单个子节点，则直接调用 mount
+      mount(children, container, isSVG)
+      break
+    case ChildrenFlags.NO_CHILDREN:
+      // 如果没有子节点，等价于挂载空片段，会创建一个空的文本节点占位
+      const placeholder = createTextVNode('')
+      mountText(placeholder, container)
+      break
+    default:
+      // 多个子节点，遍历挂载之
+      for (let i = 0; i < children.length; i++) {
+        mount(children[i], container, isSVG)
+      }
+  }
+}
+```
+
+最终的渲染效果如下图所示：
+
+![挂载fragment](../../../assets/mount-fragment.png)
+
+另外对于 `Fragment` 类型的 `VNode` 来说，当它被渲染为真实DOM之后，其 `el` 属性的引用是谁呢？这需要根据片段中节点的数量来决定，如果只有一个节点，那么 `el` 属性就指向该节点；如果有多个节点，则 `el` 属性值是第一个节点的引用；如果片段中没有节点，即空片段，则 `el` 属性引用的是占位的空文本节点元素，所以我们需要为 `mountFragment` 函数增加三句代码，如下：
+
+```js 7,13,20
+function mountFragment(vnode, container, isSVG) {
+  const { children, childFlags } = vnode
+  switch (childFlags) {
+    case ChildrenFlags.SINGLE_VNODE:
+      mount(children, container, isSVG)
+      // 单个子节点，就指向该节点
+      vnode.el = children.el
+      break
+    case ChildrenFlags.NO_CHILDREN:
+      const placeholder = createTextVNode('')
+      mountText(placeholder, container)
+      // 没有子节点指向占位的空文本节点
+      vnode.el = placeholder.el
+      break
+    default:
+      for (let i = 0; i < children.length; i++) {
+        mount(children[i], container, isSVG)
+      }
+      // 多个子节点，指向第一个子节点
+      vnode.el = children[0].el
+  }
+}
+```
+
+那么这样设计有什么意义呢？这是因为在 `patch` 阶段对DOM元素进行移动时，应该确保将其放到正确的位置，而不应该始终使用 `appendChild` 函数，有时需要使用 `insertBefore` 函数，这时候我们就需要拿到相应的节点引用，这时候 `vnode.el` 属性是必不可少的，就像上面的代码中即使 `Fragment` 没有子节点我们依然需要一个占位的空文本节点作为位置的引用。
+
+### 挂载 Portal
+
+实际上 `Portal` 可以不严谨地认为是**可以被到处挂载的 `Fragment`** 。类型为 `Fragment` 的 `VNode` 其 `tag` 属性值为 `null`，而类型是 `Portal` 的 `VNode` 其 `tag` 属性值为挂载点(选择器或真实DOM元素)。实现 `Portal` 的关键是要将其 `VNode` 的 `children` 中所包含的子 `VNode` 挂载到 `tag` 属性所指向的挂载点，`mountPortal` 函数的实现如下：
+
+```js 
+function mountPortal(vnode, container){
+  const { tag, children, childFlags } = vnode
+  // 获取挂载点
+  const target = typeof tag === 'string' ? document.querySelector(tag) : tag
+  
+  if (childFlags & ChildrenFlags.SINGLE_VNODE) {
+    // 将 children 挂载到 target 上，而非 container
+    mount(children, target)
+  } else if (childFlags & ChildrenFlags.MULTIPLE_VNODES) {
+    for (let i = 0; i < children.length; i++) {
+      // 将 children 挂载到 target 上，而非 container
+      mount(children[i], target)
+    }
+  }
+}
+```
+
+如上代码所示，挂载 `Portal` 的关键是我们需要通过 `vnode.tag` 获取到真正的挂载点，也就是 `target`，真正挂载时使用此挂载点代替 `container` 即可。
+
+那么对于 `Portal` 类型的 `VNode` 其 `el` 属性应该指向谁呢？应该指向挂载点元素吗？实际上虽然 `Portal` 所描述的内容可以被挂载到任何位置，但仍然需要一个占位元素，并且 `Portal` 类型的 `VNode` 其 `el` 属性应该指向该占位元素，为什么这么设计呢？这是因为 `Portal` 的另外一个特性：**虽然 `Portal` 的内容可以被渲染到任意位置，但它的行为仍然像普通的DOM元素一样，如事件的捕获/冒泡机制仍然按照代码所编写的DOM结构实施**。要实现这个功能就必须需要一个占位的DOM元素来承接事件。但目前来说，我们用一个空的文本节点占位即可，我们为 `mountPortal` 函数添加如下代码：
+
+```js {12,17}
+function mountPortal(vnode, container) {
+  const { tag, children, childFlags } = vnode
+  const target = typeof tag === 'string' ? document.querySelector(tag) : tag
+  if (childFlags & ChildrenFlags.SINGLE_VNODE) {
+    mount(children, target)
+  } else if (childFlags & ChildrenFlags.MULTIPLE_VNODES) {
+    for (let i = 0; i < children.length; i++) {
+      mount(children[i], target)
+    }
+  }
+
+  // 占位的空文本节点
+  const placeholder = createTextVNode('')
+  // 将该节点挂载到 container 中
+  mountText(placeholder, container, null)
+  // el 属性引用该节点
+  vnode.el = placeholder.el
+}
+```
+
+如上高亮代码所示，我们创建了一个空文本节点，并将它挂载到 `container` 下(*注意：不是挂载到 target 下*)，最后让 `Portal` 类型的 `VNode` 节点的 `el` 属性引用该空文本节点。
+
+为了测试我们的代码，我们修改 `elementVNode` 如下：
+
+```js {10,13}
+const elementVNode = h(
+  'div',
+  {
+    style: {
+      height: '100px',
+      width: '100px',
+      background: 'red'
+    }
+  },
+  h(Portal, { target: '#portal-box' }, [
+    h('span', null, '我是标题1......'),
+    h('span', null, '我是标题2......')
+  ])
+)
+```
+使用渲染器渲染该 elementVNode 的效果图如下：

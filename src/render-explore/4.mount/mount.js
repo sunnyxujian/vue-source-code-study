@@ -1,5 +1,6 @@
 import { VNodeFlags, ChildrenFlags } from '../2.design-vnode/flags'
-import { h } from '../3.h-function/h'
+
+import { h, Fragment, Portal, createTextVNode } from '../3.h-function/h'
 
 const isType = Object.prototype.toString
 
@@ -108,6 +109,54 @@ function mountElement(vnode, container, isSVG) {
   container.appendChild(el)
 }
 
+// 挂载文本节点
+function mountText(vnode, container) {
+  const el = document.createTextNode(vnode.children)
+  vnode.el = el
+  container.appendChild(el)
+}
+
+// 挂载 Fragment
+function mountFragment(vnode, container, isSVG) {
+  // 拿到 children 和 childFlags
+  const { children, childFlags } = vnode
+  switch (childFlags) {
+    case ChildrenFlags.SINGLE_VNODE:
+      // 如果是单个子节点，则直接调用 mount
+      mount(children, container, isSVG)
+      break
+    case ChildrenFlags.NO_CHILDREN:
+      // 如果没有子节点，等价于挂载空片段，会创建一个空的文本节点占位
+      const placeholder = createTextVNode('')
+      mountText(placeholder, container)
+      break
+    default:
+      // 多个子节点，遍历挂载之
+      for (let i = 0; i < children.length; i++) {
+        mount(children[i], container, isSVG)
+      }
+  }
+}
+
+// 挂载 Portal
+function mountPortal(vnode, container) {
+  const { tag, children, childFlags } = vnode
+  const target = typeof tag === 'string' ? document.querySelector(tag) : tag
+  if (childFlags & ChildrenFlags.SINGLE_VNODE) {
+    mount(children, target)
+  } else if (childFlags & ChildrenFlags.MULTIPLE_VNODES) {
+    for (let i = 0; i < children.length; i++) {
+      mount(children[i], target)
+    }
+  }
+
+  // 占位的空文本节点
+  const placeholder = createTextVNode('')
+  // 将该节点挂载到 container 中
+  mountText(placeholder, container, null)
+  // el 属性引用该节点
+  vnode.el = placeholder.el
+}
 function bindClass(el, className) {
   if (typeof className === "string") {
     el.className = className
@@ -147,18 +196,34 @@ const multipleElementVnode = h(
       width: '100px',
       background: 'red'
     },
-    class: [
-      {
-        'class-b': true,
-        'class-c': ['1', '2', '3']
-      },
-      ['class-e', 'class-f', ['x', ['xx', ['xxx', ['bbb']]]]],
-      'a'
-    ],
+    class: ['some-class'],
     onclick: function handler() {
       alert('click me')
     }
   },
+  h(Fragment, null, [
+    h('span', null, '我是标题1......'),
+    h('span', null, '我是标题2......')
+  ])
+)
+
+const portalVnode = h(
+  'div',
+  {
+    style: {
+      height: '100px',
+      width: '100px',
+      background: 'red'
+    },
+    class: ['some-class'],
+    onclick: function handler() {
+      alert('click me')
+    }
+  },
+  h(Portal, { target: '#portal-box' }, [
+    h('span', null, '我是portal 1......'),
+    h('span', null, '我是portal 2......')
+  ])
 )
 
 const inputElement = h('input', {
@@ -168,6 +233,9 @@ const inputElement = h('input', {
   custom: '1'
 })
 
-mountElement(multipleElementVnode, document.querySelector('#app'))
+// mountElement(multipleElementVnode, document.querySelector('#app'))
 
 mountElement(inputElement, document.querySelector('#app'))
+
+
+mountElement(portalVnode, document.querySelector('#app'))

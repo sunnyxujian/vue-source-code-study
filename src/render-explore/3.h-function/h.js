@@ -88,7 +88,7 @@ function normalizeVNodes(children) {
 }
 
 // 创建文本节点
-function createTextVNode(text) {
+export function createTextVNode(text) {
   return {
     _isVNode: true,
     // flags 是 VNodeFlags.TEXT
