@@ -836,3 +836,158 @@ const elementVNode = h(
 )
 ```
 使用渲染器渲染该 elementVNode 的效果图如下：
+
+![挂载portal元素](../../../assets/mount-portal.png)
+
+### 有状态组件的挂载和原理
+
+我们在“组件的本质”一章中讲到过：**组件的产出是 `VNode`**，当时我们也大致实现了有状态组件的挂载，其思路是**拿到组件产出的 `VNode`，并将之挂载到正确的 `container` 中**，思路很简单，我们着手实现。
+
+回顾一下我们的 mount 函数，如下高亮代码所示：
+
+```js {6,8}
+function mount(vnode, container, isSVG) {
+  const { flags } = vnode
+  if (flags & VNodeFlags.ELEMENT) {
+    // 挂载普通标签
+    mountElement(vnode, container, isSVG)
+  } else if (flags & VNodeFlags.COMPONENT) {
+    // 挂载组件
+    mountComponent(vnode, container, isSVG)
+  } else if (flags & VNodeFlags.TEXT) {
+    // 挂载纯文本
+    mountText(vnode, container)
+  } else if (flags & VNodeFlags.FRAGMENT) {
+    // 挂载 Fragment
+    mountFragment(vnode, container, isSVG)
+  } else if (flags & VNodeFlags.PORTAL) {
+    // 挂载 Portal
+    mountPortal(vnode, container, isSVG)
+  }
+}
+```
+
+当 `VNode` 的 `flags` 的值属于组件时(`VNodeFlags.COMPONENT`)，则会调用 `mountComponent` 函数挂载该 `VNode`，但是组件还分为有状态组件和函数式组件，所以在 `mountComponent` 函数内部，我们需要再次对组件的类型进行区分，并使用不同的挂载方式，如下是 `mountComponent` 函数的实现：
+
+```js
+function mountComponent(vnode, container, isSVG) {
+  if (vnode.flags & VNodeFlags.COMPONENT_STATEFUL) {
+    mountStatefulComponent(vnode, container, isSVG)
+  } else {
+    mountFunctionalComponent(vnode, container, isSVG)
+  }
+}
+```
+道理很简单，我们通过检查 `vnode.flags` 判断要挂载的 `VNode` 是否属于有状态组件(即 `VNodeFlags.COMPONENT_STATEFUL`)，如果该 `VNode` 描述的是有状态组件则调用 `mountStatefulComponent` 函数挂载，否则将该 `VNode` 当作函数式组件的描述，使用 `mountFunctionalComponent` 挂载。
+
+挂载一个有状态组件只需要四步，如下是 mountStatefulComponent 函数的实现：
+
+```js
+function mountStatefulComponent(vnode, container, isSVG) {
+  // 创建组件实例
+  const instance = new vnode.tag()
+  // 渲染VNode
+  instance.$vnode = instance.render()
+  // 挂载
+  mount(instance.$vnode, container, isSVG)
+  // el 属性值 和 组件实例的 $el 属性都引用组件的根DOM元素
+  instance.$el = vnode.el = instance.$vnode.el
+}
+```
+
+-  第一步：创建组件实例
+   - 如果一个 `VNode` 描述的是有状态组件，那么 `vnode.tag` 属性值就是组件类的引用，所以通过 `new` 关键字创建组件实例。
+  
+-  第二步：获取组件产出的 `VNode`
+   -  一个组件的核心就是其 `render` 函数，通过调用 `render` 函数可以拿到该组件要渲染的内容。
+
+- 第三步：`mount` 挂载
+  - 既然已经拿到了 `VNode`，那么就将其挂载到 `container` 上就可以了。
+
+- 第四步：让组件实例的 `$el` 属性和 `vnode.el` 属性的值引用组件的根DOM元素
+  - 组件的 render 函数会返回该组件产出的 `VNode`，当该 `VNode` 被挂载为真实DOM之后，就可以通过 `instance.$vnode.el` 元素拿到组件的根DOM元素，接着我们就可以让组件实例的 `$el` 属性和 `vnode.el` 属性的值都引用该DOM元素。如果组件的 `render` 返回的是一个片段(`Fragment`)，那么 `instance.$el` 和 `vnode.el` 引用的就是该片段的第一个DOM元素。
+  
+  我们来测试一下我们的代码，假设我们要渲染的 VNode 如下：
+
+```js
+  // h 函数的第一个参数是组件类
+const compVnode = h(MyComponent)
+render(compVnode, document.getElementById('app'))
+```
+如下是组件 MyComponent 组件的实现：
+```js
+class MyComponent {
+  render() {
+    return h(
+      'div',
+      {
+        style: {
+          background: 'green'
+        }
+      },
+      [
+        h('span', null, '我是组件的标题1......'),
+        h('span', null, '我是组件的标题2......')
+      ]
+    )
+  }
+}
+```
+
+该组件的 render 函数返回了它要渲染的内容，如下是使用渲染器渲染后的效果：
+
+![挂载有状态组件](../../../assets/mount-statefull-component.png)
+
+
+这里再次强调一下，这就是有**状态组件的挂载原理**，仅此而已。有的同学可能会产生疑惑，比如这里没有体现生命周期呀，也没有体现 `data`、`props`、`ref` 或者 `slots` 等等，实际上我们早在“组件的本质”一章中就提到过**这些内容是在基本原理的基础上，再次设计的产物，它们为 `render` 函数生成 `VNode` 的过程中提供数据来源服务，而组件产出 `VNode` 才是永恒的核心**，所以本节我们重在讲解原理，至于 `data`、`props`、`ref` 等内容属于组件实例的设计，在后续的章节中统一讲解。
+
+### 函数式组件的挂载和原理
+
+函数式组件就更加简单了，它就是一个返回 VNode 的函数：
+
+```js
+function MyFunctionalComponent() {
+  // 返回要渲染的内容描述，即 VNode
+  return h(
+    'div',
+    {
+      style: {
+        background: 'green'
+      }
+    },
+    [
+      h('span', null, '我是组件的标题1......'),
+      h('span', null, '我是组件的标题2......')
+    ]
+  )
+}
+```
+
+在挂载函数式组件的时候，比挂载有状态组件少了一个实例化的过程，如果一个 VNode 描述的是函数式组件，那么其 tag 属性值就是该函数的引用。
+
+如下是 mountFunctionalComponent 函数的实现：
+
+```js
+function mountFunctionalComponent(vnode, container, isSVG) {
+  // 获取 VNode
+  const $vnode = vnode.tag()
+  // 挂载
+  mount($vnode, container, isSVG)
+  // el 元素引用该组件的根元素
+  vnode.el = $vnode.el
+}
+```
+
+我们来测试一下我们的代码：
+
+```js
+const compVnode = h(MyFunctionalComponent)
+render(compVnode, document.getElementById('app'))
+```
+
+最终的渲染效果如下：
+
+![挂载函数式组件](../../../assets/mount-function-component.png)
+
+实际上如果对于 **有状态组件** 和 **函数式组件** 具体的区别不太了解的同学看到这里或许会产生疑问，觉得 **有状态组件** 的实例化很多余，实际上实例化是必须的，因为 **有状态组件** 在实例化的过程中会初始化一系列 **有状态组件** 所特有的东西，诸如 `data`(或`state`)、`computed`、`watch`、生命周期等等。而函数式组件只有 `props` 和 `slots`，它要做的工作很少，所以性能上会更好。具体的关于本地数据、`props` 数据，计算属性，插槽等的设计和实现，我们在后面的章节中统一讲解，这里给大家展示的就是最根本的原理。
+
